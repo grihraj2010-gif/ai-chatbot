@@ -154,41 +154,109 @@
     }
 
     .welcome {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 20px;
-      overflow-y: auto;
-    }
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 
+  background:
+    radial-gradient(ellipse at center,
+      rgba(0, 95, 180, 0.25),
+      transparent 45%),
+    radial-gradient(ellipse at bottom,
+      #071d35,
+      #030813 75%);
+}
+
+.welcome::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: repeating-radial-gradient(
+    circle at center,
+    transparent 0 55px,
+    rgba(0, 180, 255, 0.07) 56px 57px
+  );
+  animation: backgroundRotate 35s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes backgroundRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
     /* ANIMATED AI CORE */
 
-    .ai-core {
-      width: 190px;
-      height: 190px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 35px;
-    }
-
+  .ai-core {
+  width: 390px;
+  height: 390px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  flex-shrink: 0;
+  perspective: 900px;
+}
     .core-glow {
-      position: absolute;
-      width: 105px;
-      height: 105px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #37dcff, #0874c9 55%, #03152f);
-      box-shadow:
-        0 0 25px #00bfff,
-        0 0 60px #0077ff,
-        0 0 100px #004cff;
-      animation: corePulse 2.5s ease-in-out infinite;
-    }
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #8af4ff,
+    #0799ff 40%,
+    #003b91 75%,
+    #03152f
+  );
+  box-shadow:
+    0 0 35px #00cfff,
+    0 0 80px #0077ff,
+    0 0 150px #004cff,
+    0 0 220px rgba(0, 100, 255, .4);
+  animation: corePulse 3s ease-in-out infinite;
+}
 
+.core-ring {
+  position: absolute;
+  width: 330px;
+  height: 330px;
+  border: 2px solid rgba(0, 200, 255, .65);
+  border-radius: 50%;
+  box-shadow: 0 0 25px #008cff;
+  animation: rotateRing 8s linear infinite;
+}
+
+.core-ring.second {
+  width: 260px;
+  height: 360px;
+  border-color: rgba(0, 255, 220, .6);
+  animation: rotateRingReverse 6s linear infinite;
+}
+
+.core-ring.third {
+  width: 360px;
+  height: 250px;
+  border-color: rgba(0, 140, 255, .6);
+  animation: rotateRing 11s linear infinite;
+}
+
+.core-letter {
+  position: relative;
+  z-index: 3;
+  font-size: 65px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 25px #fff, 0 0 45px #00cfff;
+}
     .core-letter {
       position: relative;
       z-index: 3;
@@ -226,39 +294,27 @@
 
     /* YELLOW ELLIPSE */
 
-    .yellow-ellipse {
-      position: absolute;
-      width: 205px;
-      height: 65px;
-      border: 3px solid #ffdf00;
-      border-radius: 50%;
-      box-shadow:
-        0 0 10px #ffdf00,
-        0 0 25px #ffae00,
-        inset 0 0 10px #ffdf00;
-      animation: yellowOrbit 5s ease-in-out infinite;
-      z-index: 1;
-      pointer-events: none;
-    }
+
 
     /* KRANTI ANIMATION */
 
-    .kranti-word {
-      position: absolute;
-      z-index: 5;
-      top: -30px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 19px;
-      font-weight: 900;
-      letter-spacing: 7px;
-      color: #ffe45c;
-      white-space: nowrap;
-      text-shadow:
-        0 0 8px #ffdf00,
-        0 0 20px #ffae00;
-      animation: krantiFloat 3s ease-in-out infinite;
-    }
+ .kranti-word {
+  position: absolute;
+  z-index: 5;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  color: #ffe45c;
+  white-space: nowrap;
+  text-shadow:
+    0 0 12px #ffdf00,
+    0 0 30px #ffae00,
+    0 0 55px #ff8c00;
+  animation: krantiFloat 3s ease-in-out infinite;
+}
 
     .kranti-word span {
       display: inline-block;
@@ -496,6 +552,19 @@
         font-size: 11px;
       }
     }
+    @media (max-width: 650px) {
+  .ai-core {
+    transform: scale(.75);
+  }
+
+  .welcome h1 {
+    font-size: 21px;
+  }
+
+  .kranti-word {
+    letter-spacing: 8px;
+  }
+}
   </style>
 </head>
 
@@ -846,13 +915,24 @@
 
   // INITIALIZE
 
-  renderHistory();
+// INITIALIZE AI KRANTI WITH A FRESH CONVERSATION
 
-  if (chats.length > 0) {
-    openChat(chats[0].id);
-  } else {
-    newChat();
-  }
+chats = [];
+currentChatId = null;
+
+// Delete previously saved conversations
+localStorage.removeItem("jarvis_chat_history");
+
+// Clear the message area
+messages.innerHTML = "";
+messages.style.display = "none";
+
+// Show the animated welcome screen
+welcome.style.display = "flex";
+
+// Start a fresh conversation
+renderHistory();
+newChat();
 </script>
 
 </body>
