@@ -193,109 +193,119 @@
   }
 }
     /* ANIMATED AI CORE */
-
-  .ai-core {
-  width: 390px;
-  height: 390px;
+.ai-core {
+  width: 440px;
+  height: 440px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 30px;
-  flex-shrink: 0;
-  perspective: 900px;
+  perspective: 1000px;
+  margin-bottom: 25px;
 }
-    .core-glow {
+
+.core-glow {
   position: absolute;
-  width: 190px;
-  height: 190px;
+  width: 175px;
+  height: 175px;
   border-radius: 50%;
+  z-index: 2;
+
   background: radial-gradient(
-    circle,
-    #8af4ff,
-    #0799ff 40%,
-    #003b91 75%,
-    #03152f
+    circle at 35% 30%,
+    white,
+    #65eaff 12%,
+    #078cff 40%,
+    #0044a5 75%,
+    #00132e
   );
+
   box-shadow:
-    0 0 35px #00cfff,
-    0 0 80px #0077ff,
-    0 0 150px #004cff,
-    0 0 220px rgba(0, 100, 255, .4);
-  animation: corePulse 3s ease-in-out infinite;
-}
+    0 0 30px #00d9ff,
+    0 0 65px #008cff,
+    0 0 120px #0055ff,
+    0 0 190px rgba(0, 100, 255, .6);
 
-.core-ring {
-  position: absolute;
-  width: 330px;
-  height: 330px;
-  border: 2px solid rgba(0, 200, 255, .65);
-  border-radius: 50%;
-  box-shadow: 0 0 25px #008cff;
-  animation: rotateRing 8s linear infinite;
-}
-
-.core-ring.second {
-  width: 260px;
-  height: 360px;
-  border-color: rgba(0, 255, 220, .6);
-  animation: rotateRingReverse 6s linear infinite;
-}
-
-.core-ring.third {
-  width: 360px;
-  height: 250px;
-  border-color: rgba(0, 140, 255, .6);
-  animation: rotateRing 11s linear infinite;
+  animation: corePulse 2.5s ease-in-out infinite;
 }
 
 .core-letter {
   position: relative;
-  z-index: 3;
+  z-index: 4;
+  color: white;
   font-size: 65px;
   font-weight: bold;
-  color: white;
-  text-shadow: 0 0 25px #fff, 0 0 45px #00cfff;
+  text-shadow: 0 0 25px white, 0 0 45px #00cfff;
 }
-    .core-letter {
-      position: relative;
-      z-index: 3;
-      font-size: 35px;
-      font-weight: bold;
-      color: white;
-      text-shadow: 0 0 15px #fff, 0 0 30px #00cfff;
-    }
 
-    .core-ring {
-      position: absolute;
-      width: 165px;
-      height: 165px;
-      border: 2px solid rgba(0, 200, 255, 0.7);
-      border-radius: 50%;
-      box-shadow: 0 0 15px #008cff;
-      animation: rotateRing 7s linear infinite;
-    }
+.orbit {
+  position: absolute;
+  width: 370px;
+  height: 150px;
+  border: 2px solid rgba(0, 210, 255, .8);
+  border-radius: 50%;
+  transform-style: preserve-3d;
 
-    .core-ring.second {
-      width: 135px;
-      height: 180px;
-      border-color: rgba(0, 255, 220, 0.6);
-      transform: rotateX(65deg);
-      animation: rotateRingReverse 5s linear infinite;
-    }
+  box-shadow:
+    0 0 12px #00cfff,
+    inset 0 0 10px #00cfff;
+}
 
-    .core-ring.third {
-      width: 180px;
-      height: 120px;
-      border-color: rgba(0, 140, 255, 0.6);
-      transform: rotateY(65deg);
-      animation: rotateRing 9s linear infinite;
-    }
+.orbit-one {
+  animation: spinOne 5s linear infinite;
+}
 
-    /* YELLOW ELLIPSE */
+.orbit-two {
+  width: 350px;
+  height: 175px;
+  border-color: #00ffe1;
+  box-shadow: 0 0 15px #00ffe1;
+  animation: spinTwo 7s linear infinite;
+}
 
+.orbit-three {
+  width: 390px;
+  height: 125px;
+  border-color: #478cff;
+  box-shadow: 0 0 15px #478cff;
+  animation: spinThree 9s linear infinite;
+}
 
+.particle {
+  position: absolute;
+  top: 50%;
+  left: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
 
+  box-shadow:
+    0 0 10px white,
+    0 0 25px #00eaff,
+    0 0 45px #008cff;
+}
+
+@keyframes spinOne {
+  from { transform: rotateX(70deg) rotateZ(0deg); }
+  to { transform: rotateX(70deg) rotateZ(360deg); }
+}
+
+@keyframes spinTwo {
+  from { transform: rotateY(65deg) rotateZ(0deg); }
+  to { transform: rotateY(65deg) rotateZ(360deg); }
+}
+
+@keyframes spinThree {
+  from { transform: rotateX(55deg) rotateY(35deg) rotateZ(360deg); }
+  to { transform: rotateX(55deg) rotateY(35deg) rotateZ(0deg); }
+}
+
+@keyframes corePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+  
     /* KRANTI ANIMATION */
 
  .kranti-word {
@@ -565,6 +575,11 @@
     letter-spacing: 8px;
   }
 }
+    @media (max-width: 650px) {
+  .ai-core {
+    transform: scale(.72);
+  }
+}
   </style>
 </head>
 
@@ -609,20 +624,27 @@
 
         <div class="ai-core">
 
-          <div class="core-ring"></div>
-          <div class="core-ring second"></div>
-          <div class="core-ring third"></div>
+  <div class="orbit orbit-one">
+    <div class="particle"></div>
+  </div>
 
-          <div class="core-glow"></div>
+  <div class="orbit orbit-two">
+    <div class="particle"></div>
+  </div>
 
-          <div class="core-letter">K</div>
+  <div class="orbit orbit-three">
+    <div class="particle"></div>
+  </div>
 
-          <div class="yellow-ellipse"></div>
+  <div class="core-glow"></div>
+  <div class="core-letter">K</div>
 
-          <div class="kranti-word">
-            <span>K</span><span>R</span><span>A</span><span>N</span><span>T</span><span>I</span>
-          </div>
+  <div class="kranti-word">
+    <span>K</span><span>R</span><span>A</span>
+    <span>N</span><span>T</span><span>I</span>
+  </div>
 
+</div>
         </div>
 
         <h1>WELCOME TO AI KRANTI</h1>
