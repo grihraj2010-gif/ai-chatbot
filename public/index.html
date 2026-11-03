@@ -975,6 +975,287 @@
     margin-top: 25px;
   }
 }
+/* MICROPHONE BUTTON */
+#micButton {
+  min-width: 48px;
+  padding: 0 12px;
+  border: 1px solid #24516d;
+  border-radius: 10px;
+  background: #10243b;
+  color: #54dfff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+#micButton:hover {
+  background: #16405c;
+  box-shadow: 0 0 12px rgba(0, 200, 255, .25);
+}
+
+#micButton.listening {
+  background: #8b2020;
+  border-color: #ff5555;
+  color: white;
+  animation: micPulse 1s infinite;
+}
+
+@keyframes micPulse {
+  50% {
+    box-shadow: 0 0 15px #ff5555;
+  }
+}
+
+/* VOICE RESPONSE CONTROLS */
+.voice-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.voice-actions button {
+  background: #091a2d;
+  color: #69dfff;
+  border: 1px solid #24516d;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.voice-actions button:hover {
+  background: #16405c;
+}
+.voice-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.voice-actions button {
+  background: #091a2d;
+  color: #69dfff;
+  border: 1px solid #24516d;
+  border-radius: 6px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.ai-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 20px;
+    color: #54dfff;
+    font-size: 12px;
+    letter-spacing: 3px;
+    font-weight: bold;
+}
+
+.status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #54dfff;
+    box-shadow: 0 0 12px #54dfff;
+}
+
+#aiStatus.idle .status-dot {
+  background: #54dfff;
+  box-shadow: 0 0 12px #54dfff;
+}
+
+#aiStatus.listening .status-dot {
+  background: #00ff88;
+  box-shadow: 0 0 15px #00ff88;
+  animation: statusPulse 0.7s infinite alternate;
+}
+
+#aiStatus.thinking .status-dot {
+  background: #ffaa33;
+  box-shadow: 0 0 15px #ffaa33;
+  animation: statusPulse 0.4s infinite alternate;
+}
+
+#aiStatus.speaking .status-dot {
+  background: #bb72ff;
+  box-shadow: 0 0 15px #bb72ff;
+  animation: statusPulse 0.25s infinite alternate;
+}
+
+@keyframes statusPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.7); }
+}
+/* AI CORE — LISTENING */
+.ai-core.listening .core-glow {
+  animation: listeningPulse 0.7s ease-in-out infinite alternate;
+  box-shadow: 0 0 45px #00ff88,
+              0 0 100px #00ff88,
+              0 0 180px rgba(0,255,136,.6);
+}
+
+.ai-core.listening .orbit {
+  border-color: #00ff88;
+  box-shadow: 0 0 18px #00ff88;
+}
+
+/* AI CORE — THINKING */
+.ai-core.thinking .core-glow {
+  animation: thinkingPulse 0.35s ease-in-out infinite alternate;
+  box-shadow: 0 0 45px #ffaa33,
+              0 0 100px #ffaa33,
+              0 0 180px rgba(255,170,51,.6);
+}
+
+.ai-core.thinking .orbit {
+  border-color: #ffaa33;
+  box-shadow: 0 0 18px #ffaa33;
+}
+
+/* AI CORE — SPEAKING */
+.ai-core.speaking .core-glow {
+  animation: speakingPulse 0.4s ease-in-out infinite alternate;
+  box-shadow: 0 0 45px #bb72ff,
+              0 0 100px #bb72ff,
+              0 0 180px rgba(187,114,255,.6);
+}
+
+.ai-core.speaking .orbit {
+  border-color: #bb72ff;
+  box-shadow: 0 0 18px #bb72ff;
+}
+
+/* ANIMATIONS */
+@keyframes listeningPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
+@keyframes thinkingPulse {
+  from { transform: scale(.9); }
+  to { transform: scale(1.18); }
+}
+
+@keyframes speakingPulse {
+  from { transform: scale(.95); }
+  to { transform: scale(1.12); }
+}
+.core-wave {
+  position: absolute;
+  z-index: 5;
+  bottom: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  opacity: 0;
+}
+
+.core-wave span {
+  width: 3px;
+  height: 5px;
+  border-radius: 5px;
+  background: #65eaff;
+  box-shadow: 0 0 8px #00d9ff;
+}
+
+.ai-core.listening .core-wave,
+.ai-core.speaking .core-wave {
+  opacity: 1;
+}
+
+.ai-core.listening .core-wave span {
+  animation: waveMove .6s ease-in-out infinite alternate;
+}
+
+.ai-core.speaking .core-wave span {
+  animation: waveMove .3s ease-in-out infinite alternate;
+}
+
+.core-wave span:nth-child(2) { animation-delay: .1s; }
+.core-wave span:nth-child(3) { animation-delay: .2s; }
+.core-wave span:nth-child(4) { animation-delay: .3s; }
+.core-wave span:nth-child(5) { animation-delay: .2s; }
+.core-wave span:nth-child(6) { animation-delay: .1s; }
+.core-wave span:nth-child(7) { animation-delay: .05s; }
+
+@keyframes waveMove {
+  from { height: 5px; }
+  to { height: 27px; }
+}
+/* DEDICATED VOICE MODE */
+
+.voice-screen {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background:
+    radial-gradient(circle at center, #102c49 0%, #071426 45%, #050b18 100%);
+  overflow: hidden;
+  padding: 20px;
+}
+
+.voice-screen.active {
+  display: flex;
+}
+
+.voice-screen h2 {
+  color: #54dfff;
+  letter-spacing: 6px;
+  font-size: 25px;
+}
+
+.voice-subtitle {
+  color: #789ab5;
+  font-size: 10px;
+  letter-spacing: 3px;
+  margin-top: 10px;
+}
+
+#voiceCoreHolder {
+  width: min(75vw, 440px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.voice-screen .ai-core {
+  width: 100%;
+}
+
+.voice-instruction {
+  color: #54dfff;
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-top: 10px;
+}
+
+#exitVoiceButton {
+  margin-top: 30px;
+  padding: 12px 22px;
+  border: 1px solid #24516d;
+  border-radius: 8px;
+  background: #10243b;
+  color: #54dfff;
+  cursor: pointer;
+}
+
+@media (max-width: 650px) {
+  .voice-screen {
+    padding: 10px;
+  }
+
+  #voiceCoreHolder {
+    width: min(85vw, 330px);
+  }
+}
   </style>
 </head>
 
@@ -1067,6 +1348,10 @@
 
     <div class="hero-visual">
 
+<div id="aiStatus" class="ai-status">
+    <span class="status-dot"></span>
+    <span id="aiStatusText">IDLE</span>
+</div>
       <div class="visual-label">KRANTI CORE <span>● ACTIVE</span></div>
 
       <div class="ai-core">
@@ -1088,7 +1373,15 @@
         <div class="core-glow"></div>
 
         <div class="core-letter">K</div>
-
+<div class="core-wave">
+  <span></span>
+  <span></span>
+  <span></span>
+  <span></span>
+  <span></span>
+  <span></span>
+  <span></span>
+</div>
         <div class="kranti-word">
           K R A N T I
         </div>
@@ -1115,24 +1408,46 @@
 
       <div class="messages" id="messages"></div>
 
+      <!-- DEDICATED VOICE SCREEN -->
+<div id="voiceScreen" class="voice-screen">
+  <h2>AI KRANTI</h2>
+  <p class="voice-subtitle">YOUR PERSONAL AI ASSISTANT</p>
+
+  <div id="voiceCoreHolder"></div>
+
+  <div class="voice-instruction" id="voiceInstruction">
+    CLICK THE MICROPHONE TO SPEAK
+  </div>
+
+  <button id="exitVoiceButton" onclick="exitVoiceMode()">
+    EXIT VOICE MODE
+  </button>
+</div>
+
     </section>
 
     <!-- INPUT -->
 
-    <footer class="input-area">
+    
+       <div class="input-box">
+  <input
+    type="text"
+    id="userInput"
+    placeholder="Ask AI KRANTI anything..."
+    autocomplete="off"
+  >
 
-      <div class="input-box">
+  <button
+    id="micButton"
+    onclick="startVoiceInput()"
+    title="Speak"
+  >🎙️</button>
 
-        <input
-          type="text"
-          id="userInput"
-          placeholder="Ask AI KRANTI anything..."
-          autocomplete="off"
-        >
-
-        <button id="sendButton" onclick="sendMessage()">
-          SEND
-        </button>
+  <button id="sendButton" onclick="sendMessage()">SEND</button>
+  <button onclick="speakResponse('Hello! I am AI KRANTI. How can I help you?')">
+  Test KRANTI Voice
+</button>
+</div>
 
       </div>
 
@@ -1152,6 +1467,211 @@
   const welcome = document.getElementById("welcome");
   const historyList = document.getElementById("historyList");
   const sendButton = document.getElementById("sendButton");
+  const aiStatus = document.getElementById("aiStatus");
+const aiStatusText = document.getElementById("aiStatusText");
+
+
+function setAIState(state) {
+
+  const core = document.querySelector(".ai-core");
+  const status = document.getElementById("aiStatus");
+  const statusText = document.getElementById("aiStatusText");
+
+  if (core) {
+    core.classList.remove(
+      "idle", "listening", "thinking", "speaking"
+    );
+    core.classList.add(state);
+  }
+
+  if (status && statusText) {
+    status.classList.remove(
+      "idle", "listening", "thinking", "speaking"
+    );
+
+    status.classList.add(state);
+    statusText.textContent = state.toUpperCase();
+  }
+}
+
+let voiceModeActive = false;
+
+const voiceScreen = document.getElementById("voiceScreen");
+const voiceCoreHolder = document.getElementById("voiceCoreHolder");
+const heroVisual = document.querySelector(".hero-visual");
+const welcomeContent = document.querySelector(".hero-content");
+
+function enterVoiceMode() {
+  voiceModeActive = true;
+
+  // Move the original animated core into voice mode
+  voiceCoreHolder.appendChild(heroVisual);
+
+  welcome.style.display = "none";
+  messages.style.display = "none";
+  voiceScreen.classList.add("active");
+
+  document.getElementById("voiceInstruction").textContent =
+    "LISTENING FOR YOUR VOICE";
+
+  startRecognition();
+}
+
+function exitVoiceMode() {
+  voiceModeActive = false;
+
+  if (recognition && isListening) {
+    recognition.stop();
+  }
+
+  stopSpeaking();
+
+  // Return the original core to the welcome screen
+  welcomeContent.appendChild(heroVisual);
+
+  voiceScreen.classList.remove("active");
+  welcome.style.display = "flex";
+  messages.style.display = "none";
+
+  setAIState("idle");
+}
+
+function startRecognition() {
+  if (!recognition || isListening) return;
+
+  try {
+    recognition.start();
+  } catch (error) {
+    console.error("Recognition start error:", error);
+  }
+}
+  const micButton = document.getElementById("micButton");
+
+// VOICE RECOGNITION
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let recognition = null;
+let isListening = false;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+
+  recognition.lang = "en-IN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = function () {
+    isListening = true;
+    micButton.classList.add("listening");
+    micButton.textContent = "⏹️";
+    setAIState("listening");
+  };
+
+ recognition.onresult = function(event) {
+  const transcript = event.results[0][0].transcript;
+
+  input.value = transcript;
+
+  // Automatically send your spoken message
+  sendMessage();
+};
+  recognition.onend = function () {
+  isListening = false;
+  micButton.classList.remove("listening");
+  micButton.textContent = "🎙️";
+
+  if (!isSending && !voiceModeActive) {
+    setAIState("idle");
+  }
+};
+
+  recognition.onerror = function (event) {
+    console.error("Voice recognition error:", event.error);
+
+    if (event.error === "not-allowed") {
+      alert("Please allow microphone access in your browser.");
+    } else {
+      alert("Voice recognition failed: " + event.error);
+    }
+  };
+}
+
+// START / STOP MICROPHONE
+function startVoiceInput() {
+  if (!recognition) {
+    alert("Voice recognition is not supported. Try Google Chrome.");
+    return;
+  }
+
+  if (voiceModeActive) {
+    exitVoiceMode();
+    return;
+  }
+
+  enterVoiceMode();
+}
+
+// TEXT TO SPEECH
+function speakResponse(text) {
+  if (!("speechSynthesis" in window)) {
+    alert("Your browser does not support speech output.");
+    return;
+  }
+
+  if (!text || !text.trim()) {
+    console.error("No text available to speak.");
+    return;
+  }
+
+  const synth = window.speechSynthesis;
+
+  // Stop any previous speech
+  synth.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  utterance.lang = "en-IN";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+
+ utterance.onstart = function () {
+  setAIState("speaking");
+  console.log("KRANTI started speaking.");
+};
+
+utterance.onend = function () {
+  if (voiceModeActive) {
+    setAIState("listening");
+    document.getElementById("voiceInstruction").textContent =
+      "LISTENING FOR YOUR VOICE";
+
+    setTimeout(startRecognition, 500);
+  } else {
+    setAIState("idle");
+  }
+};
+
+utterance.onerror = function (event) {
+  setAIState("idle");
+  console.error("Speech error:", event.error);
+};
+
+  
+
+  // Wait briefly for the browser's speech engine
+  setTimeout(() => {
+    synth.speak(utterance);
+  }, 150);
+}
+
+// STOP SPEAKING
+function stopSpeaking() {
+  if ("speechSynthesis" in window) {
+    speechSynthesis.cancel();
+  }
+}
 
   let chats = [];
   let currentChatId = null;
@@ -1171,9 +1691,18 @@
     chats = [];
   }
 
-  function toggleSidebar() {
-  document.querySelector(".sidebar").classList.toggle("sidebar-open");
-}
+  document.addEventListener("click", function(event) {
+  const sidebar = document.querySelector(".sidebar");
+  const menuButton = document.querySelector(".menu-toggle");
+
+  if (
+    sidebar.classList.contains("sidebar-open") &&
+    !sidebar.contains(event.target) &&
+    !menuButton.contains(event.target)
+  ) {
+    sidebar.classList.remove("sidebar-open");
+  }
+});
   function saveChats() {
     try {
       localStorage.setItem(
@@ -1277,20 +1806,45 @@
   // ADD MESSAGE TO SCREEN
 
   function addMessage(text, sender) {
-    const div = document.createElement("div");
+  const div = document.createElement("div");
 
-    div.className =
-      sender === "user"
-        ? "message user-message"
-        : "message ai-message";
+  div.className =
+    sender === "user"
+      ? "message user-message"
+      : "message ai-message";
 
-    div.textContent = text;
+  const messageText = document.createElement("div");
+  messageText.textContent = text;
+  div.appendChild(messageText);
 
-    messages.appendChild(div);
+  // ADD VOICE CONTROLS TO AI MESSAGES
+  if (sender === "ai") {
+    const actions = document.createElement("div");
+    actions.className = "voice-actions";
 
-    messages.scrollTop = messages.scrollHeight;
+    const speakButton = document.createElement("button");
+    speakButton.textContent = "🔊 Listen";
+
+    speakButton.onclick = function () {
+      speakResponse(text);
+    };
+
+    const stopButton = document.createElement("button");
+    stopButton.textContent = "⏹ Stop";
+
+    stopButton.onclick = function () {
+      stopSpeaking();
+    };
+
+    actions.appendChild(speakButton);
+    actions.appendChild(stopButton);
+
+    div.appendChild(actions);
   }
 
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
   // SEND MESSAGE
 
   async function sendMessage() {
@@ -1300,7 +1854,7 @@
 
     isSending = true;
     sendButton.disabled = true;
-
+setAIState("thinking");
     welcome.style.display = "none";
     messages.style.display = "flex";
 
@@ -1360,14 +1914,12 @@
 
       typing.remove();
 
-      addMessage(reply, "ai");
+chat.messages.push({ sender: "ai", text: reply });
+saveChats();
+addMessage(reply, "ai");
 
-      chat.messages.push({
-        sender: "ai",
-        text: reply
-      });
-
-      saveChats();
+// Automatically speak KRANTI's response
+speakResponse(reply);
 
     } catch (error) {
 
@@ -1409,12 +1961,14 @@ localStorage.removeItem("jarvis_chat_history");
 
 // Clear the message area
 messages.innerHTML = "";
-messages.style.display = "none";
-
-// Show the animated welcome screen
-welcome.style.display = "flex";
-
+if (voiceModeActive) {
+  voiceScreen.classList.add("active");
+} else {
+  welcome.style.display = "none";
+  messages.style.display = "flex";
+}
 // Start a fresh conversation
+setAIState("idle");
 renderHistory();
 newChat();
 </script>
