@@ -333,51 +333,37 @@
       }
     }
     
-/* =================================
-   AI KRANTI — PREMIUM HERO DESIGN
-================================= */
+
+/* FUTURISTIC KRANTI WELCOME SCREEN */
 
 .welcome {
   position: relative;
-  overflow-x: hidden;
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
   background:
-    radial-gradient(ellipse at 78% 48%, rgba(0, 111, 190, .15), transparent 38%),
-    radial-gradient(ellipse at 15% 80%, rgba(0, 72, 130, .12), transparent 35%),
-    #050b18;
-  padding: 35px 5% 20px;
-}
-
-.welcome::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: .22;
-  background-image:
-    linear-gradient(rgba(80, 160, 210, .08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(80, 160, 210, .08) 1px, transparent 1px);
-  background-size: 45px 45px;
-  mask-image: linear-gradient(to bottom, black, transparent 90%);
+    linear-gradient(90deg, rgba(3, 8, 25, .25), rgba(3, 8, 25, .05)),
+    url("/images/kranti-background.png") center center / cover no-repeat;
 }
 
 .hero-content {
   width: 100%;
-  max-width: 1250px;
-  min-height: 520px;
-  display: grid;
-  grid-template-columns: 1.1fr .9fr;
+  flex: 1;
+  display: flex;
   align-items: center;
-  gap: 20px;
-  position: relative;
-  z-index: 1;
-  margin: auto;
+  justify-content: space-between;
+  padding: 45px 7%;
+  gap: 25px;
 }
 
 .hero-copy {
-  text-align: left;
-  max-width: 650px;
+  flex: 1;
+  z-index: 2;
+  max-width: 560px;
   animation: heroEnter 1s ease both;
 }
 
@@ -385,130 +371,165 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 14px;
-  border: 1px solid rgba(0, 200, 255, .25);
+  color: #b8eaff;
+  border: 1px solid #087dff;
   border-radius: 30px;
-  background: rgba(0, 160, 220, .07);
-  color: #7ddfff;
-  font-size: 10px;
+  padding: 10px 18px;
+  font-size: 11px;
   letter-spacing: 2px;
-  margin-bottom: 30px;
+  background: rgba(0, 30, 70, .65);
+  box-shadow: 0 0 18px #0066ff55;
 }
 
 .badge-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #00e6ae;
-  box-shadow: 0 0 12px #00e6ae;
+  background: #00ffad;
+  box-shadow: 0 0 12px #00ffad;
 }
 
 .hero-copy h1 {
-  font-size: clamp(35px, 4.5vw, 65px);
-  line-height: 1.12;
-  letter-spacing: -2px;
-  color: #f1f8ff;
-  margin-bottom: 25px;
+  font-size: clamp(48px, 6vw, 88px);
+  color: white;
+  letter-spacing: 2px;
+  margin: 35px 0 10px;
+  text-shadow: 0 0 25px #008cff;
 }
 
 .hero-copy h1 span {
-  color: #35caff;
-  text-shadow: 0 0 30px rgba(0, 180, 255, .25);
+  background: linear-gradient(90deg, #00eaff, #6c7bff, #d16aff);
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 .hero-copy p {
-  max-width: 520px;
-  color: #91a9c1;
-  font-size: 15px;
-  line-height: 1.9;
-  margin-bottom: 30px;
-}
-
-.hero-buttons {
-  display: flex;
-  align-items: center;
-  gap: 25px;
-  flex-wrap: wrap;
+  color: #c4e8ff;
+  font-size: clamp(16px, 2vw, 23px);
+  letter-spacing: 2px;
+  margin-bottom: 40px;
 }
 
 .hero-primary {
-  padding: 16px 23px;
-  background: linear-gradient(110deg, #087cba, #00bde5);
+  padding: 17px 30px;
   color: white;
-  border: none;
-  border-radius: 5px;
-  font-size: 11px;
+  background: rgba(0, 50, 140, .45);
+  border: 1px solid #00c8ff;
+  border-radius: 40px;
   font-weight: bold;
   letter-spacing: 1px;
   cursor: pointer;
+  box-shadow: 0 0 20px #007bff88, inset 0 0 15px #007bff55;
   transition: .3s;
 }
 
 .hero-primary:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0, 180, 255, .3);
-}
-
-.hero-primary span {
-  margin-left: 12px;
-  font-size: 16px;
+  transform: translateY(-3px);
+  box-shadow: 0 0 35px #00bfff;
 }
 
 .hero-note {
   display: flex;
   align-items: center;
-  gap: 9px;
-  color: #8ba8c0;
-  font-size: 10px;
-  letter-spacing: 1px;
+  gap: 12px;
+  margin-top: 25px;
+  color: #b5eaff;
+  letter-spacing: 2px;
+  font-size: 12px;
 }
 
 .hero-features {
   display: flex;
-  gap: 35px;
-  margin-top: 65px;
-  padding-top: 25px;
-  border-top: 1px solid rgba(110, 170, 210, .15);
+  gap: 25px;
+  margin-top: 55px;
+  color: #8bdcff;
+  font-size: 11px;
+  letter-spacing: 1px;
 }
-
-.hero-features div {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.hero-features strong {
-  color: #35caff;
-  font-size: 20px;
-}
-
-.hero-features span {
-  color: #718ba5;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-}
-
-/* RIGHT SIDE AI VISUAL */
 
 .hero-visual {
+  flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-width: 0;
-  animation: visualEnter 1.2s ease both;
+  animation: coreEnter 1.3s ease both;
 }
 
-.visual-label,
-.visual-caption {
-  color: #7396b2;
+.ai-core {
+  filter: drop-shadow(0 0 25px #008cff);
+  animation: coreFloat 5s ease-in-out infinite;
+}
+
+.hero-bottom {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 7%;
+  color: #6dbce9;
+  border-top: 1px solid #087dff66;
   font-size: 10px;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
+  background: rgba(0, 10, 30, .6);
 }
 
-.visual-label span {
-  color: #37e5ad;
-  margin-left: 12px;
+@keyframes heroEnter {
+  from { opacity: 0; transform: translateX(-35px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes coreEnter {
+  from { opacity: 0; transform: scale(.75); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes coreFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-13px); }
+}
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+  .hero-content {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding: 25px 15px;
+    gap: 15px;
+  }
+
+  .hero-copy h1 {
+    margin-top: 20px;
+  }
+
+  .hero-copy p {
+    margin-bottom: 20px;
+  }
+
+  .hero-note {
+    justify-content: center;
+  }
+
+  .hero-features {
+    justify-content: center;
+    gap: 12px;
+    margin-top: 25px;
+    font-size: 9px;
+  }
+
+  .hero-visual {
+    width: 100%;
+    min-height: 180px;
+  }
+
+  .hero-bottom {
+    justify-content: center;
+    font-size: 8px;
+  }
+
+  .hero-bottom span:last-child {
+    display: none;
+  }
 }
 
 .ai-core {
@@ -1295,7 +1316,6 @@
 
     <section class="chat-area">
 
-      <!-- WELCOME SCREEN -->
 
      
 <!-- WELCOME SCREEN -->
@@ -1304,92 +1324,58 @@
   <div class="hero-content">
 
     <div class="hero-copy">
+
       <div class="hero-badge">
         <span class="badge-dot"></span>
         NEXT GENERATION AI ASSISTANT
       </div>
 
-      <h1>
-        THINK BEYOND.<br>
-        <span>CREATE WITHOUT LIMITS.</span>
-      </h1>
+      <h1>AI <span>KRANTI</span></h1>
 
-      <p>
-        Meet AI KRANTI — your intelligent AI companion.
-        Explore ideas, solve problems, write code and turn
-        your imagination into reality.
-      </p>
+      <p>Your Intelligent AI Companion</p>
 
-      <div class="hero-buttons">
-        <button class="hero-primary" onclick="document.getElementById('userInput').focus()">
-          START A CONVERSATION <span>↗</span>
-        </button>
-        <div class="hero-note">
-          <span class="badge-dot"></span>
-          YOUR AI IS READY
-        </div>
+      <button class="hero-primary"
+        onclick="document.getElementById('userInput').focus()">
+        START A CONVERSATION <span>↗</span>
+      </button>
+
+      <div class="hero-note">
+        <span class="badge-dot"></span>
+        YOUR AI IS READY
       </div>
 
       <div class="hero-features">
-        <div>
-          <strong>01</strong>
-          <span>INTELLIGENCE</span>
-        </div>
-        <div>
-          <strong>02</strong>
-          <span>CREATIVITY</span>
-        </div>
-        <div>
-          <strong>03</strong>
-          <span>INNOVATION</span>
-        </div>
+        <span>INTELLIGENCE</span>
+        <span>CREATIVITY</span>
+        <span>INNOVATION</span>
       </div>
+
     </div>
 
     <div class="hero-visual">
 
-<div id="aiStatus" class="ai-status">
-    <span class="status-dot"></span>
-    <span id="aiStatusText">IDLE</span>
-</div>
-      <div class="visual-label">KRANTI CORE <span>● ACTIVE</span></div>
+      <div id="aiStatus" class="ai-status">
+        <span class="status-dot"></span>
+        <span id="aiStatusText">IDLE</span>
+      </div>
 
       <div class="ai-core">
 
-        <div class="orbit orbit-one">
-          <i class="particle"></i>
-        </div>
-
-        <div class="orbit orbit-two">
-          <i class="particle"></i>
-        </div>
-
-        <div class="orbit orbit-three">
-          <i class="particle"></i>
-        </div>
-
+        <div class="orbit orbit-one"><i class="particle"></i></div>
+        <div class="orbit orbit-two"><i class="particle"></i></div>
+        <div class="orbit orbit-three"><i class="particle"></i></div>
         <div class="orbit orbit-four"></div>
 
         <div class="core-glow"></div>
-
         <div class="core-letter">K</div>
-<div class="core-wave">
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-</div>
-        <div class="kranti-word">
-          K R A N T I
+
+        <div class="core-wave">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
         </div>
 
-      </div>
+        <div class="kranti-word">K R A N T I</div>
 
-      <div class="visual-caption">
-        <span>●</span> POWERED BY ADVANCED AI
       </div>
 
     </div>
@@ -1399,11 +1385,9 @@
   <div class="hero-bottom">
     <span>AI KRANTI © 2026</span>
     <span>THE FUTURE STARTS HERE</span>
-    <span>BUILT FOR WHAT'S NEXT ↗</span>
   </div>
 
 </div>
-
       <!-- CHAT MESSAGES -->
 
       <div class="messages" id="messages"></div>
