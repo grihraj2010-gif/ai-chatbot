@@ -58,6 +58,7 @@ function callPC(tool, args) {
 
 /* ---------------- TOOLS THE AI CAN USE ---------------- */
 const APPS = ["notepad", "calculator", "chrome", "edge", "vscode", "file_explorer", "paint", "settings", "task_manager"];
+const CLOSABLE = APPS.filter((a) => a !== "file_explorer"); // closing Explorer would break the taskbar
 const tool = (name, description, properties = {}, required = []) => ({
   type: "function",
   function: { name, description, parameters: { type: "object", properties, required } }
@@ -67,14 +68,25 @@ const TOOLS = [
   tool("open_website", "Open a website in the browser on the user's PC.", { url: { type: "string" } }, ["url"]),
   tool("web_search", "Search Google in the browser on the user's PC.", { query: { type: "string" } }, ["query"]),
   tool("open_app", "Open an app on the user's PC.", { app: { type: "string", enum: APPS } }, ["app"]),
+  tool("close_app", "Close an app on the user's PC. If there is unsaved work, the app will ask the user to save first.", { app: { type: "string", enum: CLOSABLE } }, ["app"]),
   tool("create_note", "Save a text note as a file on the user's PC.", { title: { type: "string" }, text: { type: "string" } }, ["title", "text"]),
-  tool("lock_pc", "Lock the screen of the user's PC.")
+  tool("lock_pc", "Lock the screen of the user's PC."),
+  tool("set_volume", "Set the PC speaker volume from 0 to 100.", { level: { type: "integer", minimum: 0, maximum: 100 } }, ["level"]),
+  tool("toggle_mute", "Mute or unmute the PC speakers."),
+  tool("take_screenshot", "Take a screenshot of the user's PC screen and show it to the user."),
+  tool("shutdown_pc", "Shut down the PC after a 30 second delay. Only after the owner clearly confirmed."),
+  tool("restart_pc", "Restart the PC after a 30 second delay. Only after the owner clearly confirmed."),
+  tool("cancel_shutdown", "Cancel a pending shutdown or restart.")
 ];
 
-async function runTool(name, args) {
+async function runTool(name, args, out) {
   if (name === "get_time")
     return { ok: true, time: new Date().toLocaleString("en-IN", { timeZone: TIMEZONE, dateStyle: "full", timeStyle: "short" }) };
-  if (TOOLS.some((t) => t.function.name === name)) return callPC(name, args);
+  if (TOOLS.some((t) => t.function.name === name)) {
+    const r = await callPC(name, args);
+    if (r.image) { out.image = r.image; delete r.image; r.note = "The screenshot was captured and will be shown to the user."; }
+    return r;
+  }
   return { ok: false, error: "Unknown tool." };
 }
 
@@ -114,11 +126,12 @@ ANSWERING STYLE:
 /* Only the owner (correct password) gets device control. Everyone else gets a normal chatbot. */
 const OWNER_RULES = `
 DEVICE CONTROL (the owner is signed in):
-- You can control the owner's Windows PC with your tools: open websites, search Google, open apps, save notes and lock the screen.
+- You can control the owner's Windows PC with your tools: open websites, search Google, open and close apps, save notes, lock the screen, change the volume, take screenshots, and shut down or restart the PC.
 - Use a tool only when the owner asks you to do something on their PC.
 - Only say an action is done if the tool result says ok. If a tool fails or the PC is offline, say so honestly.
 - Never guess a website address. Use web_search if you are unsure.
 - Do not claim you can do things you have no tool for.
+- Before shutdown_pc or restart_pc, ask the owner to confirm, and only run it after they clearly say yes. After starting it, tell them it happens in 30 seconds and they can say "cancel shutdown" to stop it.
 `;
 const PUBLIC_RULES = `
 DEVICE CONTROL:
@@ -135,6 +148,7 @@ function cleanHistory(history) {
 }
 
 async function askGroq(message, history, owner) {
+  const out = { image: null };
   const msgs = [{ role: "system", content: KRANTI_INSTRUCTIONS + (owner ? OWNER_RULES : PUBLIC_RULES) }, ...history, { role: "user", content: message }];
 
   for (let step = 0; step < 4; step++) {
@@ -142,18 +156,18 @@ async function askGroq(message, history, owner) {
     const reply = completion.choices[0].message;
 
     if (!reply.tool_calls || !reply.tool_calls.length)
-      return reply.content || "I couldn't generate a response.";
+      return { reply: reply.content || "I couldn't generate a response.", image: out.image };
 
     msgs.push({ role: "assistant", content: reply.content || "", tool_calls: reply.tool_calls });
     for (const call of reply.tool_calls) {
       let args = {};
       try { args = JSON.parse(call.function.arguments || "{}"); } catch {}
-      const result = await runTool(call.function.name, args);
+      const result = await runTool(call.function.name, args, out);
       console.log("Tool:", call.function.name, args, "->", result.ok ? "ok" : result.error);
       msgs.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
     }
   }
-  return "I tried, but I couldn't finish that. Please try again.";
+  return { reply: "I tried, but I couldn't finish that. Please try again.", image: out.image };
 }
 
 app.post("/api/chat", async (req, res) => {
@@ -173,8 +187,8 @@ app.post("/api/chat", async (req, res) => {
     if (message.length > MAX_MESSAGE_LENGTH)
       return res.status(400).json({ error: "That message is too long. Please shorten it." });
 
-    const reply = await askGroq(message.trim(), cleanHistory(req.body.history), owner);
-    res.json({ reply });
+    const { reply, image } = await askGroq(message.trim(), cleanHistory(req.body.history), owner);
+    res.json({ reply, image });
   } catch (error) {
     console.error("Groq API error:", error);
     res.status(500).json({ error: "Something went wrong while generating a response." });
