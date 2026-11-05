@@ -37,6 +37,7 @@ button{font-family:inherit}
 .topbar h2{font-family:"Exo 2",Arial,sans-serif;font-size:17px;letter-spacing:2px;color:#bceeff}
 .status{color:#36e6a3;font-size:13px;font-weight:600;letter-spacing:1px}
 .status::before{content:"";display:inline-block;width:7px;height:7px;background:#36e6a3;border-radius:50%;margin-right:7px;box-shadow:0 0 10px #36e6a3}
+.top-right{display:flex;align-items:center;gap:14px}.owner-btn{background:transparent;border:1px solid #24516d;color:#54dfff;border-radius:6px;padding:5px 10px;font-size:15px;font-weight:700;cursor:pointer}.owner-btn.on{border-color:#22e07a;color:#22e07a;box-shadow:0 0 10px rgba(34,224,122,.35)}
 .menu-toggle{display:none;background:transparent;border:1px solid #24516d;color:#54dfff;border-radius:6px;padding:7px 11px;font-size:20px;cursor:pointer}
 .chat-area{flex:1;display:flex;flex-direction:column;min-height:0}
 
@@ -157,7 +158,7 @@ button{font-family:inherit}
   <header class="topbar">
    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Open menu">☰</button>
    <h2>AI KRANTI</h2>
-   <div class="status">SYSTEM ONLINE</div>
+   <div class="top-right"><button id="ownerBtn" class="owner-btn" onclick="ownerLogin()" title="Owner login" aria-label="Owner login">🔒</button><div class="status">SYSTEM ONLINE</div></div>
   </header>
 
   <section class="chat-area">
@@ -358,6 +359,22 @@ function addMessage(text,sender){
  messages.appendChild(div);messages.scrollTop=messages.scrollHeight;
 }
 
+/* ---------- OWNER LOGIN (private features; the chat itself stays public) ---------- */
+function updateOwnerUI(){
+ const on=!!localStorage.getItem("kranti_pass"),b=document.getElementById("ownerBtn");
+ b.textContent=on?"🔓 OWNER":"🔒";b.classList.toggle("on",on);b.title=on?"Owner mode on. Click to lock":"Owner login";
+}
+async function ownerLogin(){
+ if(localStorage.getItem("kranti_pass")){localStorage.removeItem("kranti_pass");updateOwnerUI();return}
+ const password=prompt("Owner password:");
+ if(!password)return;
+ try{
+  const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
+  if(res.ok){localStorage.setItem("kranti_pass",password);updateOwnerUI()}
+  else alert(res.status===429?"Too many attempts. Please wait a minute.":"Wrong password.");
+ }catch{alert("Could not reach the server.")}
+}
+
 /* ---------- SEND ---------- */
 async function sendMessage(){
  const message=input.value.trim();
@@ -373,15 +390,18 @@ async function sendMessage(){
  messages.appendChild(typing);messages.scrollTop=messages.scrollHeight;
  try{
   /* "history" is extra context for the AI; your server may ignore it until you use it */
-  const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,history})});
+  const headers={"Content-Type":"application/json"},pw=localStorage.getItem("kranti_pass");
+  if(pw)headers["x-app-password"]=pw;
+  const res=await fetch("/api/chat",{method:"POST",headers,body:JSON.stringify({message,history})});
   const data=await res.json();
+  if(res.status===401){localStorage.removeItem("kranti_pass");updateOwnerUI()}
   if(!res.ok)throw new Error(data.error||"Server error");
   const reply=data.reply||"I couldn't generate a response.";
   typing.remove();chat.messages.push({sender:"ai",text:reply});saveChats();addMessage(reply,"ai");
   speakResponse(reply);
  }catch(err){
   console.error("Chat error:",err);typing.remove();
-  addMessage("Sorry, something went wrong. Please try again.","ai");
+  addMessage(err.message==="Wrong password"?"Owner mode was turned off because the password is no longer valid. Tap the lock to sign in again.":(err.message&&err.message.startsWith("Too many")?err.message:"Sorry, something went wrong. Please try again."),"ai");
   setAIState(voiceModeActive?"listening":"idle");
   if(voiceModeActive)setTimeout(startRecognition,600);
  }finally{
@@ -392,6 +412,7 @@ async function sendMessage(){
 input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing)sendMessage()});
 
 /* ---------- START ---------- */
+updateOwnerUI();
 setAIState("idle");
 newChat();
 

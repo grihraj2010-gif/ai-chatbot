@@ -2,21 +2,81 @@
 import "dotenv/config";
 import Groq from "groq-sdk";
 import express from "express";
+import crypto from "crypto";
+import { WebSocketServer } from "ws";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const APP_PASSWORD = process.env.APP_PASSWORD;   // password for the website
+const AGENT_TOKEN = process.env.AGENT_TOKEN;     // secret for your PC helper
+const TIMEZONE = process.env.TIMEZONE || "Asia/Kolkata";
 
+if (!APP_PASSWORD || !AGENT_TOKEN) {
+  console.error("Set APP_PASSWORD and AGENT_TOKEN in your environment variables.");
+  process.exit(1);
+}
+
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "100kb" }));
 app.use(express.static("public"));
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
-
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const model = "openai/gpt-oss-20b";
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_HISTORY = 10;
 
-const MAX_MESSAGE_LENGTH = 4000; // characters per message
-const MAX_HISTORY = 10;          // earlier messages sent back to the AI
+const same = (a, b) => {
+  const x = Buffer.from(String(a || "")), y = Buffer.from(String(b || ""));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+
+/* simple rate limit per minute per IP */
+const hits = new Map();
+function rateLimited(key, max) {
+  const now = Date.now(), h = hits.get(key);
+  if (!h || now > h.reset) { hits.set(key, { count: 1, reset: now + 60000 }); return false; }
+  return ++h.count > max;
+}
+
+/* ---------------- PC HELPER CONNECTION ---------------- */
+let agent = null;
+const pending = new Map();
+
+function callPC(tool, args) {
+  return new Promise((resolve) => {
+    if (!agent || agent.readyState !== 1)
+      return resolve({ ok: false, error: "The PC helper is offline, so I can't do that right now." });
+    const id = crypto.randomUUID();
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      resolve({ ok: false, error: "The PC did not respond in time." });
+    }, 15000);
+    pending.set(id, (r) => { clearTimeout(timer); resolve(r); });
+    agent.send(JSON.stringify({ id, tool, args }));
+  });
+}
+
+/* ---------------- TOOLS THE AI CAN USE ---------------- */
+const APPS = ["notepad", "calculator", "chrome", "edge", "vscode", "file_explorer", "paint", "settings", "task_manager"];
+const tool = (name, description, properties = {}, required = []) => ({
+  type: "function",
+  function: { name, description, parameters: { type: "object", properties, required } }
+});
+const TOOLS = [
+  tool("get_time", "Get the current date and time."),
+  tool("open_website", "Open a website in the browser on the user's PC.", { url: { type: "string" } }, ["url"]),
+  tool("web_search", "Search Google in the browser on the user's PC.", { query: { type: "string" } }, ["query"]),
+  tool("open_app", "Open an app on the user's PC.", { app: { type: "string", enum: APPS } }, ["app"]),
+  tool("create_note", "Save a text note as a file on the user's PC.", { title: { type: "string" }, text: { type: "string" } }, ["title", "text"]),
+  tool("lock_pc", "Lock the screen of the user's PC.")
+];
+
+async function runTool(name, args) {
+  if (name === "get_time")
+    return { ok: true, time: new Date().toLocaleString("en-IN", { timeZone: TIMEZONE, dateStyle: "full", timeStyle: "short" }) };
+  if (TOOLS.some((t) => t.function.name === name)) return callPC(name, args);
+  return { ok: false, error: "Unknown tool." };
+}
 
 const KRANTI_INSTRUCTIONS = `
 You are AI KRANTI, an intelligent personal AI assistant.
@@ -51,70 +111,99 @@ ANSWERING STYLE:
 - Remember what was said earlier in the conversation and use it when answering.
 `;
 
-// Keep only valid, trimmed history items from the browser.
+/* Only the owner (correct password) gets device control. Everyone else gets a normal chatbot. */
+const OWNER_RULES = `
+DEVICE CONTROL (the owner is signed in):
+- You can control the owner's Windows PC with your tools: open websites, search Google, open apps, save notes and lock the screen.
+- Use a tool only when the owner asks you to do something on their PC.
+- Only say an action is done if the tool result says ok. If a tool fails or the PC is offline, say so honestly.
+- Never guess a website address. Use web_search if you are unsure.
+- Do not claim you can do things you have no tool for.
+`;
+const PUBLIC_RULES = `
+DEVICE CONTROL:
+- You cannot control any computer or phone in this chat. If asked to open apps, files or websites on a device, politely say that this is a private feature.
+- Never reveal or discuss details about private tools, passwords, servers or keys.
+`;
+
 function cleanHistory(history) {
   if (!Array.isArray(history)) return [];
-
   return history
-    .filter(
-      (item) =>
-        item &&
-        (item.role === "user" || item.role === "assistant") &&
-        typeof item.content === "string" &&
-        item.content.trim()
-    )
+    .filter((i) => i && (i.role === "user" || i.role === "assistant") && typeof i.content === "string" && i.content.trim())
     .slice(-MAX_HISTORY)
-    .map((item) => ({
-      role: item.role,
-      content: item.content.slice(0, MAX_MESSAGE_LENGTH)
-    }));
+    .map((i) => ({ role: i.role, content: i.content.slice(0, MAX_MESSAGE_LENGTH) }));
 }
 
-async function askGroq(message, history) {
-  const completion = await groq.chat.completions.create({
-    model: model,
-    messages: [
-      { role: "system", content: KRANTI_INSTRUCTIONS },
-      ...history,
-      { role: "user", content: message }
-    ]
-  });
+async function askGroq(message, history, owner) {
+  const msgs = [{ role: "system", content: KRANTI_INSTRUCTIONS + (owner ? OWNER_RULES : PUBLIC_RULES) }, ...history, { role: "user", content: message }];
 
-  return (
-    completion.choices[0].message.content ||
-    "I couldn't generate a response."
-  );
+  for (let step = 0; step < 4; step++) {
+    const completion = await groq.chat.completions.create(owner ? { model, messages: msgs, tools: TOOLS } : { model, messages: msgs });
+    const reply = completion.choices[0].message;
+
+    if (!reply.tool_calls || !reply.tool_calls.length)
+      return reply.content || "I couldn't generate a response.";
+
+    msgs.push({ role: "assistant", content: reply.content || "", tool_calls: reply.tool_calls });
+    for (const call of reply.tool_calls) {
+      let args = {};
+      try { args = JSON.parse(call.function.arguments || "{}"); } catch {}
+      const result = await runTool(call.function.name, args);
+      console.log("Tool:", call.function.name, args, "->", result.ok ? "ok" : result.error);
+      msgs.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+    }
+  }
+  return "I tried, but I couldn't finish that. Please try again.";
 }
 
 app.post("/api/chat", async (req, res) => {
   try {
+    const supplied = req.headers["x-app-password"];
+    const owner = !!supplied && same(supplied, APP_PASSWORD);
+    if (supplied && !owner) {
+      if (rateLimited("bad:" + req.ip, 8)) return res.status(429).json({ error: "Too many requests. Please wait a minute." });
+      return res.status(401).json({ error: "Wrong password" });
+    }
+    if (rateLimited((owner ? "o:" : "p:") + req.ip, owner ? 60 : 20))
+      return res.status(429).json({ error: "Too many requests. Please wait a minute." });
+
     const message = req.body.message;
+    if (!message || typeof message !== "string" || !message.trim())
+      return res.status(400).json({ error: "Please provide a valid message." });
+    if (message.length > MAX_MESSAGE_LENGTH)
+      return res.status(400).json({ error: "That message is too long. Please shorten it." });
 
-    if (!message || typeof message !== "string" || !message.trim()) {
-      return res.status(400).json({
-        error: "Please provide a valid message."
-      });
-    }
-
-    if (message.length > MAX_MESSAGE_LENGTH) {
-      return res.status(400).json({
-        error: "That message is too long. Please shorten it."
-      });
-    }
-
-    const history = cleanHistory(req.body.history);
-    const reply = await askGroq(message.trim(), history);
-
+    const reply = await askGroq(message.trim(), cleanHistory(req.body.history), owner);
     res.json({ reply });
   } catch (error) {
     console.error("Groq API error:", error);
-
-    res.status(500).json({
-      error: "Something went wrong while generating a response."
-    });
+    res.status(500).json({ error: "Something went wrong while generating a response." });
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`AI KRANTI running on port ${PORT}`);
+/* the owner unlocks private features from the lock button on the page */
+app.post("/api/login", (req, res) => {
+  if (rateLimited("login:" + req.ip, 8)) return res.status(429).json({ error: "Too many attempts. Please wait a minute." });
+  if (!same(req.body && req.body.password, APP_PASSWORD)) return res.status(401).json({ error: "Wrong password" });
+  res.json({ ok: true });
 });
+
+const server = app.listen(PORT, "0.0.0.0", () => console.log(`AI KRANTI running on port ${PORT}`));
+
+/* ---------------- WEBSOCKET FOR THE PC HELPER ---------------- */
+const wss = new WebSocketServer({ noServer: true });
+server.on("upgrade", (req, socket, head) => {
+  const token = (req.headers.authorization || "").replace(/^Bearer /, "");
+  if (!req.url.startsWith("/agent") || !same(token, AGENT_TOKEN)) { socket.destroy(); return; }
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws));
+});
+wss.on("connection", (ws) => {
+  if (agent && agent.readyState === 1) agent.close();
+  agent = ws;
+  console.log("PC helper connected");
+  ws.on("message", (data) => {
+    try { const m = JSON.parse(data); pending.get(m.id)?.(m); pending.delete(m.id); } catch {}
+  });
+  ws.on("close", () => { if (agent === ws) { agent = null; console.log("PC helper disconnected"); } });
+});
+setInterval(() => agent?.ping(), 25000);
