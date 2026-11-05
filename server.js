@@ -6,7 +6,7 @@ import express from "express";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 app.use(express.static("public"));
 
 const groq = new Groq({
@@ -14,6 +14,9 @@ const groq = new Groq({
 });
 
 const model = "openai/gpt-oss-20b";
+
+const MAX_MESSAGE_LENGTH = 4000; // characters per message
+const MAX_HISTORY = 10;          // earlier messages sent back to the AI
 
 const KRANTI_INSTRUCTIONS = `
 You are AI KRANTI, an intelligent personal AI assistant.
@@ -27,7 +30,6 @@ IDENTITY:
 - Never claim that you independently created yourself.
 - If someone specifically asks which AI model or technology powers you, answer truthfully.
 - Never claim that your name is Groq.
-
 
 PERSONALITY:
 - Friendly, intelligent and respectful.
@@ -45,40 +47,65 @@ ANSWERING STYLE:
 - Keep normal answers concise.
 - Explain complex topics step by step.
 - Use examples when helpful.
+- Your replies are shown as plain text and read aloud, so do not use Markdown symbols such as ** or # or tables. Use short paragraphs and simple numbered lines for steps.
+- Remember what was said earlier in the conversation and use it when answering.
 `;
 
-async function askGroq(message) {
+// Keep only valid, trimmed history items from the browser.
+function cleanHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .filter(
+      (item) =>
+        item &&
+        (item.role === "user" || item.role === "assistant") &&
+        typeof item.content === "string" &&
+        item.content.trim()
+    )
+    .slice(-MAX_HISTORY)
+    .map((item) => ({
+      role: item.role,
+      content: item.content.slice(0, MAX_MESSAGE_LENGTH)
+    }));
+}
+
+async function askGroq(message, history) {
   const completion = await groq.chat.completions.create({
     model: model,
     messages: [
-      {
-        role: "system",
-        content: KRANTI_INSTRUCTIONS
-      },
-      {
-        role: "user",
-        content: message
-      }
+      { role: "system", content: KRANTI_INSTRUCTIONS },
+      ...history,
+      { role: "user", content: message }
     ]
   });
 
-  return completion.choices[0].message.content ||
-    "I couldn't generate a response.";
+  return (
+    completion.choices[0].message.content ||
+    "I couldn't generate a response."
+  );
 }
 
 app.post("/api/chat", async (req, res) => {
   try {
     const message = req.body.message;
 
-    if (!message || typeof message !== "string") {
+    if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
         error: "Please provide a valid message."
       });
     }
 
-    const reply = await askGroq(message);
-    res.json({ reply });
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return res.status(400).json({
+        error: "That message is too long. Please shorten it."
+      });
+    }
 
+    const history = cleanHistory(req.body.history);
+    const reply = await askGroq(message.trim(), history);
+
+    res.json({ reply });
   } catch (error) {
     console.error("Groq API error:", error);
 
@@ -91,4 +118,3 @@ app.post("/api/chat", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`AI KRANTI running on port ${PORT}`);
 });
-
