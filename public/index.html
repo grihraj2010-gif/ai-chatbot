@@ -158,7 +158,7 @@ button{font-family:inherit}
   <header class="topbar">
    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Open menu">☰</button>
    <h2>AI KRANTI</h2>
-   <div class="top-right"><button id="ownerBtn" class="owner-btn" onclick="ownerLogin()" title="Owner login" aria-label="Owner login">🔒</button><div class="status">SYSTEM ONLINE</div></div>
+   <div class="top-right"><button id="wakeBtn" class="owner-btn" onclick="toggleWake()" style="display:none" title="Wake word" aria-label="Wake word">🎧</button><button id="ownerBtn" class="owner-btn" onclick="ownerLogin()" title="Owner login" aria-label="Owner login">🔒</button><div class="status">SYSTEM ONLINE</div></div>
   </header>
 
   <section class="chat-area">
@@ -224,7 +224,7 @@ const input=document.getElementById("userInput"),messages=document.getElementByI
  heroVisual=document.querySelector(".hero-visual"),welcomeContent=document.querySelector(".hero-content"),
  sidebar=document.getElementById("sidebar"),voiceInstruction=document.getElementById("voiceInstruction");
 
-let chats=[],currentChatId=null,isSending=false,voiceModeActive=false,isSpeaking=false,recognition=null,isListening=false;
+let chats=[],currentChatId=null,isSending=false,voiceModeActive=false,isSpeaking=false,recognition=null,isListening=false,wakeOn=false,wakeAsked=false,wakeSession=false,wakeRunning=false,wakeRec=null,lastActivity=Date.now();
 
 /* ---------- AI STATE (drives status pill + hologram colours) ---------- */
 function setAIState(state){
@@ -240,13 +240,13 @@ document.addEventListener("click",e=>{
 });
 
 /* ---------- VOICE MODE ---------- */
-function enterVoiceMode(){
- voiceModeActive=true;
+function enterVoiceMode(listen=true){
+ voiceModeActive=true;lastActivity=Date.now();
  voiceCoreHolder.appendChild(heroVisual);
  welcome.style.display="none";messages.style.display="none";
  voiceScreen.classList.add("active");
- voiceInstruction.textContent="LISTENING FOR YOUR VOICE";
- startRecognition();
+ voiceInstruction.textContent=listen?"LISTENING FOR YOUR VOICE":"THINKING…";
+ if(listen)startRecognition();
 }
 function exitVoiceMode(){
  voiceModeActive=false;
@@ -258,6 +258,7 @@ function exitVoiceMode(){
  if(chat&&chat.messages.length){welcome.style.display="none";messages.style.display="flex";messages.scrollTop=messages.scrollHeight}
  else{welcome.style.display="flex";messages.style.display="none"}
  setAIState("idle");
+ wakeSession=false;if(wakeOn)setTimeout(startWake,600);
 }
 function startRecognition(){
  if(!recognition||isListening||isSending||isSpeaking)return;
@@ -267,10 +268,13 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(SR){
  recognition=new SR();recognition.lang="en-IN";recognition.continuous=false;recognition.interimResults=false;
  recognition.onstart=()=>{isListening=true;micButton.classList.add("listening");micButton.textContent="⏹️";setAIState("listening")};
- recognition.onresult=e=>{input.value=e.results[0][0].transcript;if(voiceModeActive)voiceInstruction.textContent="THINKING…";sendMessage()};
+ recognition.onresult=e=>{lastActivity=Date.now();input.value=e.results[0][0].transcript;if(voiceModeActive)voiceInstruction.textContent="THINKING…";sendMessage()};
  recognition.onend=()=>{
   isListening=false;micButton.classList.remove("listening");micButton.textContent="🎙️";
-  if(voiceModeActive){if(!isSending&&!isSpeaking)setTimeout(startRecognition,400)}
+  if(voiceModeActive){
+   if(wakeSession&&!isSending&&!isSpeaking&&Date.now()-lastActivity>12000){exitVoiceMode();return}
+   if(!isSending&&!isSpeaking)setTimeout(startRecognition,400)
+  }
   else if(!isSending)setAIState("idle");
  };
  recognition.onerror=e=>{
@@ -294,7 +298,7 @@ function speakResponse(text){
  const u=new SpeechSynthesisUtterance(text);u.lang="en-IN";u.rate=1;u.pitch=1;u.volume=1;
  u.onstart=()=>{isSpeaking=true;setAIState("speaking")};
  u.onend=()=>{
-  isSpeaking=false;
+  isSpeaking=false;lastActivity=Date.now();
   if(voiceModeActive){setAIState("listening");voiceInstruction.textContent="LISTENING FOR YOUR VOICE";setTimeout(startRecognition,500)}
   else setAIState("idle");
  };
@@ -364,6 +368,7 @@ function addMessage(text,sender,image){
 /* ---------- OWNER LOGIN (private features; the chat itself stays public) ---------- */
 function updateOwnerUI(){
  const on=!!localStorage.getItem("kranti_pass"),b=document.getElementById("ownerBtn");
+ document.getElementById("wakeBtn").style.display=(on&&SR)?"":"none";
  b.textContent=on?"🔓 OWNER":"🔒";b.classList.toggle("on",on);b.title=on?"Owner mode on. Click to lock":"Owner login";
 }
 async function ownerLogin(){
@@ -413,8 +418,57 @@ async function sendMessage(){
 }
 input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing)sendMessage()});
 
+/* ---------- WAKE WORD ("Hey Kranti") ---------- */
+function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.15);setTimeout(()=>a.close(),400)}catch{}}
+function updateWakeUI(){
+ const b=document.getElementById("wakeBtn");
+ b.classList.toggle("on",wakeOn);
+ b.title=wakeOn?'Wake word ON: say "Hey Kranti". Click to turn off':'Turn on wake word ("Hey Kranti")';
+}
+function focusScreen(){ /* asks your PC helper to bring this window to the front */
+ const pw=localStorage.getItem("kranti_pass");if(!pw)return;
+ fetch("/api/wake",{method:"POST",headers:{"x-app-password":pw}}).catch(()=>{});
+}
+function createWakeRec(){
+ const r=new SR();r.lang="en-IN";r.continuous=true;r.interimResults=false;
+ r.onstart=()=>{wakeRunning=true};
+ r.onend=()=>{wakeRunning=false;if(wakeOn&&!voiceModeActive)setTimeout(startWake,400)};
+ r.onerror=e=>{
+  if(e.error==="not-allowed"||e.error==="service-not-allowed"){
+   wakeOn=false;localStorage.removeItem("kranti_wake");updateWakeUI();
+   if(wakeAsked)alert("Allow microphone access for this site to use the wake word. Use Chrome or Edge (Brave does not support it).");
+  }
+ };
+ r.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)heard(e.results[i][0].transcript)};
+ return r;
+}
+function startWake(){
+ if(!SR||!wakeOn||wakeRunning||voiceModeActive)return;
+ if(!wakeRec)wakeRec=createWakeRec();
+ try{wakeRec.start()}catch{}
+}
+function heard(text){
+ if(!wakeOn||voiceModeActive||isSending||isSpeaking)return;
+ const m=text.trim().match(/^(?:hey |hi |ok |okay )?(?:kranti|kranthi|kranty|kranthy)\b[\s,.!?]*(.*)$/i);
+ if(!m)return;
+ const cmd=m[1].trim();
+ beep();wakeSession=true;lastActivity=Date.now();
+ if(wakeRunning&&wakeRec)wakeRec.stop();
+ focusScreen();
+ setTimeout(()=>{enterVoiceMode(!cmd);if(cmd){input.value=cmd;sendMessage()}},350);
+}
+function toggleWake(){
+ if(!SR){alert("Wake word needs Chrome or Edge.");return}
+ wakeOn=!wakeOn;wakeAsked=true;
+ localStorage.setItem("kranti_wake",wakeOn?"1":"0");
+ if(wakeOn){beep();startWake()}else if(wakeRec&&wakeRunning)wakeRec.stop();
+ updateWakeUI();
+}
+
 /* ---------- START ---------- */
 updateOwnerUI();
+if(SR&&localStorage.getItem("kranti_pass")&&localStorage.getItem("kranti_wake")==="1"){wakeOn=true;startWake()}
+updateWakeUI();
 setAIState("idle");
 newChat();
 
