@@ -77,9 +77,19 @@ const TOOLS = [
   tool("shutdown_pc", "Shut down the PC after a 30 second delay. Only after the owner clearly confirmed."),
   tool("restart_pc", "Restart the PC after a 30 second delay. Only after the owner clearly confirmed."),
   tool("cancel_shutdown", "Cancel a pending shutdown or restart."),
-  tool("play_music", "Play a song, artist or kind of music directly on the user's PC (YouTube in a music window). Replaces any music already playing.", { query: { type: "string", description: "Song and artist, e.g. 'Kesariya Arijit Singh'" } }, ["query"]),
+  tool("play_music", "Play music on the user's PC. Uses the Spotify app by default. Replaces any music already playing.", {
+    query: { type: "string", description: "Song and artist, e.g. 'Kesariya Arijit Singh'" },
+    service: { type: "string", enum: ["spotify", "youtube"], description: "Leave empty for the default. Use youtube only if the user asks for YouTube." },
+    kind: { type: "string", enum: ["track", "artist", "album", "playlist"], description: "Default is track" },
+    repeat: { type: "boolean", description: "true to play the song again and again until stopped" }
+  }, ["query"]),
+  tool("play_playlist", "Play a playlist, an artist's songs or a mood as a list of songs, one after another, until the list ends or the user stops it.", {
+    query: { type: "string", description: "Playlist name, artist, or mood, e.g. 'Arijit Singh hits' or 'relaxing study music'" },
+    repeat: { type: "boolean", description: "true to loop the whole playlist" },
+    shuffle: { type: "boolean", description: "true to mix the order" }
+  }, ["query"]),
   tool("stop_music", "Stop the music and close the music window on the user's PC."),
-  tool("media_control", "Pause or resume the music, or skip to the next or previous track.", { action: { type: "string", enum: ["play_pause", "next", "previous"] } }, ["action"])
+  tool("media_control", "Pause or resume the music, or skip to the next or previous track.", { action: { type: "string", enum: ["play_pause", "next", "previous", "repeat_song", "repeat_playlist", "repeat_off"] } }, ["action"])
 ];
 
 async function runTool(name, args, out) {
@@ -87,6 +97,7 @@ async function runTool(name, args, out) {
     return { ok: true, time: new Date().toLocaleString("en-IN", { timeZone: TIMEZONE, dateStyle: "full", timeStyle: "short" }) };
   if (TOOLS.some((t) => t.function.name === name)) {
     const r = await callPC(name, args);
+    if ((name === "play_music" || name === "play_playlist") && r.ok) { out.music = true; out.musicTitle = r.playing; out.musicPlaylist = !!r.playlist; out.musicRepeat = !!r.repeat; }
     if (r.image) { out.image = r.image; delete r.image; r.note = "The screenshot was captured and will be shown to the user."; }
     return r;
   }
@@ -134,7 +145,7 @@ DEVICE CONTROL (the owner is signed in):
 - Only say an action is done if the tool result says ok. If a tool fails or the PC is offline, say so honestly.
 - Never guess a website address. Use web_search if you are unsure.
 - Do not claim you can do things you have no tool for.
-- When the owner asks to play music or a song, use play_music with the song and artist as the query. Use stop_music to stop it and media_control to pause, resume or skip.
+- When the owner asks to play music or a song, use play_music with the song and artist as the query. Use stop_music to stop it and media_control to pause, resume or skip. For a song on repeat use play_music with repeat true, or media_control repeat_song if a song is already playing. For a playlist, an artist's songs or a mood, use play_playlist. Use media_control repeat_off to stop repeating. Music plays in the Spotify app by default. After play_music succeeds, reply with one short sentence only.
 - Before shutdown_pc or restart_pc, ask the owner to confirm, and only run it after they clearly say yes. After starting it, tell them it happens in 30 seconds and they can say "cancel shutdown" to stop it.
 `;
 const PUBLIC_RULES = `
@@ -152,7 +163,7 @@ function cleanHistory(history) {
 }
 
 async function askGroq(message, history, owner) {
-  const out = { image: null };
+  const out = { image: null, music: false };
   const msgs = [{ role: "system", content: KRANTI_INSTRUCTIONS + (owner ? OWNER_RULES : PUBLIC_RULES) }, ...history, { role: "user", content: message }];
 
   for (let step = 0; step < 4; step++) {
@@ -160,7 +171,7 @@ async function askGroq(message, history, owner) {
     const reply = completion.choices[0].message;
 
     if (!reply.tool_calls || !reply.tool_calls.length)
-      return { reply: reply.content || "I couldn't generate a response.", image: out.image };
+      return { reply: reply.content || "I couldn't generate a response.", image: out.image, music: out.music };
 
     msgs.push({ role: "assistant", content: reply.content || "", tool_calls: reply.tool_calls });
     for (const call of reply.tool_calls) {
@@ -170,8 +181,13 @@ async function askGroq(message, history, owner) {
       console.log("Tool:", call.function.name, args, "->", result.ok ? "ok" : result.error);
       msgs.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
     }
+    if (out.music) { // song is playing: just say so, nothing more
+      const short = String(out.musicTitle || "your song").split(/\s*[|(\[]/)[0].trim().slice(0, 60) || "your song";
+      const reply = out.musicPlaylist ? `Playing the playlist, starting with ${short}.` : out.musicRepeat ? `Playing ${short} on repeat.` : `Playing ${short}.`;
+      return { reply, image: out.image, music: true };
+    }
   }
-  return { reply: "I tried, but I couldn't finish that. Please try again.", image: out.image };
+  return { reply: "I tried, but I couldn't finish that. Please try again.", image: out.image, music: out.music };
 }
 
 app.post("/api/chat", async (req, res) => {
@@ -191,8 +207,8 @@ app.post("/api/chat", async (req, res) => {
     if (message.length > MAX_MESSAGE_LENGTH)
       return res.status(400).json({ error: "That message is too long. Please shorten it." });
 
-    const { reply, image } = await askGroq(message.trim(), cleanHistory(req.body.history), owner);
-    res.json({ reply, image });
+    const { reply, image, music } = await askGroq(message.trim(), cleanHistory(req.body.history), owner);
+    res.json({ reply, image, music });
   } catch (error) {
     console.error("Groq API error:", error);
     res.status(500).json({ error: "Something went wrong while generating a response." });
