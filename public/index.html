@@ -73,6 +73,7 @@ button{font-family:inherit}
 .ai-core{position:relative;width:min(100%,640px);aspect-ratio:1.25/1;margin:0}
 .ai-core canvas{position:absolute;left:-25%;top:-25%;width:150%;height:150%;pointer-events:none}
 
+.wake-hint{margin-top:6px;font-size:11px;letter-spacing:2px;color:#22e07a;font-weight:600;position:relative;z-index:2;text-align:center}
 /* STATUS PILL */
 .ai-status{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:6px;color:#54dfff;font-size:13px;letter-spacing:3px;font-weight:700;position:relative;z-index:2}
 .status-dot{width:9px;height:9px;border-radius:50%;background:#54dfff;box-shadow:0 0 12px #54dfff}
@@ -187,6 +188,7 @@ button{font-family:inherit}
      <div class="hero-visual">
       <div class="ai-core" id="aiCore"><canvas id="holo" aria-label="Animated hologram of the AI KRANTI core"></canvas></div>
       <div id="aiStatus" class="ai-status idle"><span class="status-dot"></span><span id="aiStatusText">IDLE</span></div>
+      <div id="wakeHint" class="wake-hint" hidden>WAKE WORD ON · SAY "HEY KRANTI"</div>
      </div>
     </div>
     <div class="hero-bottom"><span>AI KRANTI © 2026</span><span>THE FUTURE STARTS HERE</span></div>
@@ -224,7 +226,11 @@ const input=document.getElementById("userInput"),messages=document.getElementByI
  heroVisual=document.querySelector(".hero-visual"),welcomeContent=document.querySelector(".hero-content"),
  sidebar=document.getElementById("sidebar"),voiceInstruction=document.getElementById("voiceInstruction");
 
-let chats=[],currentChatId=null,isSending=false,voiceModeActive=false,isSpeaking=false,recognition=null,isListening=false,wakeOn=false,wakeAsked=false,wakeSession=false,wakeRunning=false,wakeRec=null,lastActivity=Date.now();
+let chats=[],currentChatId=null,isSending=false,voiceModeActive=false,isSpeaking=false,recognition=null,isListening=false,wakeOn=false,wakeAsked=false,wakeSession=false,wakeRunning=false,wakeRec=null,lastActivity=Date.now(),exitAfterSpeak=false;
+/* spoken commands */
+const STOP_RE=/^(?:hey |hello |hi |ok |okay )?(?:kranti[\s,]*)?(?:please )?(?:stop|stop speaking|stop talking|be quiet|quiet|silence|enough|shut up)[\s.!?]*$/i;
+const EXIT_RE=/\b(?:exit|close|leave|quit|end|stop)\b.*\b(?:voice(?: mode)?|listening|conversation)\b|^(?:ok |okay )?(?:kranti[\s,]*)?(?:exit|goodbye|bye|go back|that'?s all)[\s.!?]*$/i;
+const WAKE_RE=/^(?:hey |hello |hi |ok |okay )?(?:kranti|kranthi|kranty|kranthy|cranti|karanti|granti)\b[\s,.!?]*(.*)$/i;
 
 /* ---------- AI STATE (drives status pill + hologram colours) ---------- */
 function setAIState(state){
@@ -268,7 +274,12 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(SR){
  recognition=new SR();recognition.lang="en-IN";recognition.continuous=false;recognition.interimResults=false;
  recognition.onstart=()=>{isListening=true;micButton.classList.add("listening");micButton.textContent="⏹️";setAIState("listening")};
- recognition.onresult=e=>{lastActivity=Date.now();input.value=e.results[0][0].transcript;if(voiceModeActive)voiceInstruction.textContent="THINKING…";sendMessage()};
+ recognition.onresult=e=>{
+  lastActivity=Date.now();
+  const text=e.results[0][0].transcript.trim();
+  if(voiceModeActive&&EXIT_RE.test(text)){beep();exitVoiceMode();return}  /* "exit voice mode" */
+  if(STOP_RE.test(text))return;                                             /* nothing is speaking: ignore */
+  input.value=text;if(voiceModeActive)voiceInstruction.textContent="THINKING…";sendMessage()};
  recognition.onend=()=>{
   isListening=false;micButton.classList.remove("listening");micButton.textContent="🎙️";
   if(voiceModeActive){
@@ -291,18 +302,27 @@ function startVoiceInput(){
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&voiceModeActive)exitVoiceMode()});
 
 /* ---------- TEXT TO SPEECH ---------- */
+function afterSpeech(){
+ isSpeaking=false;lastActivity=Date.now();
+ if(voiceModeActive&&wakeRunning&&wakeRec)wakeRec.stop();  /* the "stop" listener is done */
+ if(exitAfterSpeak){exitAfterSpeak=false;if(voiceModeActive){exitVoiceMode();return}} /* music started: leave voice mode */
+ if(voiceModeActive){setAIState("listening");voiceInstruction.textContent="LISTENING FOR YOUR VOICE";setTimeout(startRecognition,600)}
+ else setAIState("idle");
+}
+function startInterrupt(){ /* in voice mode, listen while the AI talks so you can say "stop" */
+ if(!SR||!voiceModeActive||wakeRunning)return;
+ if(!wakeRec)wakeRec=createWakeRec();
+ try{wakeRec.start()}catch{}
+}
 function speakResponse(text){
  if(!("speechSynthesis" in window)){alert("Your browser does not support speech output.");return}
  if(!text||!text.trim())return;
  const synth=window.speechSynthesis;synth.cancel();
  const u=new SpeechSynthesisUtterance(text);u.lang="en-IN";u.rate=1;u.pitch=1;u.volume=1;
- u.onstart=()=>{isSpeaking=true;setAIState("speaking")};
- u.onend=()=>{
-  isSpeaking=false;lastActivity=Date.now();
-  if(voiceModeActive){setAIState("listening");voiceInstruction.textContent="LISTENING FOR YOUR VOICE";setTimeout(startRecognition,500)}
-  else setAIState("idle");
- };
- u.onerror=e=>{isSpeaking=false;setAIState(voiceModeActive?"listening":"idle");console.error("Speech error:",e.error)};
+ let done=false;const finish=()=>{if(!done){done=true;afterSpeech()}};
+ u.onstart=()=>{isSpeaking=true;setAIState("speaking");startInterrupt()};
+ u.onend=finish;
+ u.onerror=e=>{console.error("Speech error:",e.error);finish()};
  setTimeout(()=>synth.speak(u),150);
 }
 function stopSpeaking(){if("speechSynthesis" in window)speechSynthesis.cancel();isSpeaking=false}
@@ -386,7 +406,7 @@ async function ownerLogin(){
 async function sendMessage(){
  const message=input.value.trim();
  if(!message||isSending)return;
- isSending=true;sendButton.disabled=true;setAIState("thinking");
+ isSending=true;exitAfterSpeak=false;sendButton.disabled=true;setAIState("thinking");
  if(!voiceModeActive){welcome.style.display="none";messages.style.display="flex"}
  const chat=getCurrentChat();
  const history=chat.messages.slice(-10).map(m=>({role:m.sender==="user"?"user":"assistant",content:m.text}));
@@ -405,6 +425,7 @@ async function sendMessage(){
   if(!res.ok)throw new Error(data.error||"Server error");
   const reply=data.reply||"I couldn't generate a response.";
   typing.remove();chat.messages.push({sender:"ai",text:reply});saveChats();addMessage(reply,"ai",data.image);
+  if(data.music)exitAfterSpeak=true;
   speakResponse(reply);
  }catch(err){
   console.error("Chat error:",err);typing.remove();
@@ -422,7 +443,7 @@ input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing)sendMess
 function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.15);setTimeout(()=>a.close(),400)}catch{}}
 function updateWakeUI(){
  const b=document.getElementById("wakeBtn");
- b.classList.toggle("on",wakeOn);
+ b.classList.toggle("on",wakeOn);document.getElementById("wakeHint").hidden=!wakeOn;
  b.title=wakeOn?'Wake word ON: say "Hey Kranti". Click to turn off':'Turn on wake word ("Hey Kranti")';
 }
 function focusScreen(){ /* asks your PC helper to bring this window to the front */
@@ -448,8 +469,10 @@ function startWake(){
  try{wakeRec.start()}catch{}
 }
 function heard(text){
- if(!wakeOn||voiceModeActive||isSending||isSpeaking)return;
- const m=text.trim().match(/^(?:hey |hi |ok |okay )?(?:kranti|kranthi|kranty|kranthy)\b[\s,.!?]*(.*)$/i);
+ const t=text.trim();
+ if(isSpeaking){if(STOP_RE.test(t))stopSpeaking();return}   /* "stop" while the AI is talking */
+ if(!wakeOn||voiceModeActive||isSending)return;
+ const m=t.match(WAKE_RE);
  if(!m)return;
  const cmd=m[1].trim();
  beep();wakeSession=true;lastActivity=Date.now();
