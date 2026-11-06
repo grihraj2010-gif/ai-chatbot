@@ -76,7 +76,10 @@ const TOOLS = [
   tool("take_screenshot", "Take a screenshot of the user's PC screen and show it to the user."),
   tool("shutdown_pc", "Shut down the PC after a 30 second delay. Only after the owner clearly confirmed."),
   tool("restart_pc", "Restart the PC after a 30 second delay. Only after the owner clearly confirmed."),
-  tool("cancel_shutdown", "Cancel a pending shutdown or restart.")
+  tool("cancel_shutdown", "Cancel a pending shutdown or restart."),
+  tool("play_music", "Play a song, artist or kind of music directly on the user's PC (YouTube in a music window). Replaces any music already playing.", { query: { type: "string", description: "Song and artist, e.g. 'Kesariya Arijit Singh'" } }, ["query"]),
+  tool("stop_music", "Stop the music and close the music window on the user's PC."),
+  tool("media_control", "Pause or resume the music, or skip to the next or previous track.", { action: { type: "string", enum: ["play_pause", "next", "previous"] } }, ["action"])
 ];
 
 async function runTool(name, args, out) {
@@ -126,11 +129,12 @@ ANSWERING STYLE:
 /* Only the owner (correct password) gets device control. Everyone else gets a normal chatbot. */
 const OWNER_RULES = `
 DEVICE CONTROL (the owner is signed in):
-- You can control the owner's Windows PC with your tools: open websites, search Google, open and close apps, save notes, lock the screen, change the volume, take screenshots, and shut down or restart the PC.
+- You can control the owner's Windows PC with your tools: open websites, search Google, open and close apps, save notes, lock the screen, change the volume, take screenshots, play music, and shut down or restart the PC.
 - Use a tool only when the owner asks you to do something on their PC.
 - Only say an action is done if the tool result says ok. If a tool fails or the PC is offline, say so honestly.
 - Never guess a website address. Use web_search if you are unsure.
 - Do not claim you can do things you have no tool for.
+- When the owner asks to play music or a song, use play_music with the song and artist as the query. Use stop_music to stop it and media_control to pause, resume or skip.
 - Before shutdown_pc or restart_pc, ask the owner to confirm, and only run it after they clearly say yes. After starting it, tell them it happens in 30 seconds and they can say "cancel shutdown" to stop it.
 `;
 const PUBLIC_RULES = `
@@ -193,6 +197,13 @@ app.post("/api/chat", async (req, res) => {
     console.error("Groq API error:", error);
     res.status(500).json({ error: "Something went wrong while generating a response." });
   }
+});
+
+/* wake word: bring the AI KRANTI window to the front of the PC screen */
+app.post("/api/wake", async (req, res) => {
+  if (rateLimited("wake:" + req.ip, 30)) return res.status(429).json({ error: "Too many requests." });
+  if (!same(req.headers["x-app-password"], APP_PASSWORD)) return res.status(401).json({ error: "Wrong password" });
+  res.json(await callPC("focus_window", {}));
 });
 
 /* the owner unlocks private features from the lock button on the page */
